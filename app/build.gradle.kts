@@ -36,6 +36,22 @@ android {
         versionCode = 2
         versionName = "1.0.1-beta"
         buildConfigField("String", "TMDB_API_KEY", "\"${tmdbKey.replace("\"", "")}\"")
+        manifestPlaceholders["appLabel"] = "GlassOS"
+    }
+
+    // "upstream" builds exactly what the original project ships. "family" installs next to it under its own
+    // package name and label, so both can be on the TV at once (each needs its own grants and setup).
+    flavorDimensions += "edition"
+    productFlavors {
+        create("upstream") {
+            dimension = "edition"
+        }
+        create("family") {
+            dimension = "edition"
+            applicationIdSuffix = ".family"
+            versionNameSuffix = "-family"
+            manifestPlaceholders["appLabel"] = "GlassOS Family"
+        }
     }
 
     signingConfigs {

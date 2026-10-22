@@ -14,3 +14,7 @@ tmdb.properties
 *.apk
 *.aab
 handoff.md
+
+# Local test tooling: device address and results stay on this machine
+tools/.device
+tools/out/
