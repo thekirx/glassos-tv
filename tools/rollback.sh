@@ -53,8 +53,9 @@ case "${1:-status}" in
         # Re-enables every app listed in tools/out/debloat-done.txt (written when apps were disabled).
         list="$OUT_DIR/debloat-done.txt"
         [ -f "$list" ] || { echo "No $list: nothing recorded as disabled."; exit 1; }
-        confirm $(sed 's/^/pm enable /' "$list" | tr '\n' ' ')
-        while read -r p; do [ -n "$p" ] && sh_tv pm enable "$p"; done < "$list"
+        cmds=(); while read -r p; do [ -n "$p" ] && cmds+=("pm enable $p"); done < <(sort -u "$list")
+        confirm "${cmds[@]}"
+        while read -r p; do [ -n "$p" ] && sh_tv pm enable "$p"; done < <(sort -u "$list")
         ;;
     remove-family)
         confirm "dpm remove-active-admin $FAMILY/io.github.abhishekkaisar.glassos.AdminReceiver" "uninstall $FAMILY"
