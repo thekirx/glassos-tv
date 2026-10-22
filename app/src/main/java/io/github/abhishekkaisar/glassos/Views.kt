@@ -240,6 +240,7 @@ class TileView(ctx: Context, val cardW: Int, val cardH: Int, private val labelH:
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
         if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+            if (BuildConfig.DEBUG) WLog.i("tile key up ${KeyEvent.keyCodeToString(keyCode)} longFired=$longFired canceled=${event.isCanceled} tracking=${event.isTracking} dev=${event.deviceId}")
             if (!longFired && !event.isCanceled) onClick?.invoke()
             longFired = false
             return true

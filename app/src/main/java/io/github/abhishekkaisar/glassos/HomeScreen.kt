@@ -575,6 +575,8 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
     }
 
     fun launch(pkg: String, from: View?) {
+        // Debug builds: who opened an app, with the call stack.
+        if (BuildConfig.DEBUG) android.util.Log.i("GlassWatch", "launch $pkg from ${if (ctx is Activity) "activity" else "overlay"}", Throwable("launch trace"))
         val pm = ctx.packageManager
         val i = pm.getLeanbackLaunchIntentForPackage(pkg) ?: pm.getLaunchIntentForPackage(pkg)
         if (i == null) {
@@ -877,6 +879,8 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
     /** Root view: sends keys to the home screen first, and Back to [onBack]. */
     private inner class KeyRoot(c: Context) : FrameLayout(c) {
         override fun dispatchKeyEvent(e: KeyEvent): Boolean {
+            // Debug builds: every key Glass receives (tracing an app that opened with no key press logged).
+            if (BuildConfig.DEBUG) WLog.i("key ${KeyEvent.keyCodeToString(e.keyCode)} ${if (e.action == 0) "down" else "up"} rep=${e.repeatCount} dev=${e.deviceId} src=0x${Integer.toHexString(e.source)} flags=0x${Integer.toHexString(e.flags)} age=${android.os.SystemClock.uptimeMillis() - e.eventTime}ms in ${if (ctx is Activity) "activity" else "overlay"}")
             if (onKey(e)) return true
             if (e.keyCode == KeyEvent.KEYCODE_BACK && ctx !is Activity) {
                 if (e.action == KeyEvent.ACTION_UP && !e.isCanceled) onBack()

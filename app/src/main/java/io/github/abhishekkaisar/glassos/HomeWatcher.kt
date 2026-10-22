@@ -124,6 +124,7 @@ class HomeWatcher : Service() {
                 if (pkg != packageName) userChoseAmazon = false
             }
         }
+        if (sawEvent) homeInFront = amazonHome
         if (amazonHome) {
             // After a boot Fire OS keeps its logo on screen until Amazon's home signals it has drawn (or for about
             // 2 minutes). Covering the home before that leaves the logo up, so wait for the boot animation to end.
@@ -142,10 +143,39 @@ class HomeWatcher : Service() {
     private fun redirectWanted(): Boolean =
         prefs.replaceHome && !userChoseAmazon && SystemClock.elapsedRealtime() >= allowAmazonUntil
 
+    /** The last foreground event seen was the stock home (kept across polls that see no events). */
+    private var homeInFront = false
+    private var recheckPending = false
+    private var burstStart = 0L
+    private var burstCount = 0
+
+    /** End of the debounce window: the stock home is still in front, so bring Glass back again. */
+    private val recheck = Runnable {
+        recheckPending = false
+        if (homeInFront) bringBack("recheck")
+    }
+
     private fun bringBack(why: String) {
         if (!redirectWanted()) return
         val t = SystemClock.elapsedRealtime()
-        if (t - lastRedirect < DEBOUNCE_MS) return
+        if (t - lastRedirect < DEBOUNCE_MS) {
+            // Google TV's home starts itself again about 0.2 s after Glass comes up from the Home key. Dropping that
+            // event left the stock home on screen: cover it with the overlay now (a window add, never held) and
+            // start Glass again once the window has passed, if the stock home is still in front then.
+            WLog.i("bring back ($why) ${t - lastRedirect} ms after the last: overlay now, again at the end of the window")
+            main.post { if (redirectWanted()) HomeOverlay.show(this, onlyIfHidden = true) }
+            if (!recheckPending) {
+                recheckPending = true
+                handler.postDelayed(recheck, DEBOUNCE_MS - (t - lastRedirect))
+            }
+            return
+        }
+        // Never fight the stock home without end: a few redirects in a row, then stop until it calms down.
+        if (t - burstStart > BURST_MS) { burstStart = t; burstCount = 0 }
+        if (++burstCount > MAX_BURST) {
+            WLog.i("bring back ($why) skipped: $MAX_BURST redirects in ${t - burstStart} ms")
+            return
+        }
         lastRedirect = t
         val i = Intent(this, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NO_ANIMATION)
@@ -196,6 +226,8 @@ class HomeWatcher : Service() {
         private const val POLL_MS = 120L
         private const val IDLE_POLL_MS = 2000L
         private const val DEBOUNCE_MS = 1500L
+        private const val BURST_MS = 10_000L
+        private const val MAX_BURST = 4
 
         /** Set when Glass opens Amazon's home on purpose: no redirect for 3 s, and none until another app comes up. */
         @Volatile var allowAmazonUntil = 0L
