@@ -5,6 +5,7 @@
 #   tools/rollback.sh google-home     re-enable the Google TV home and setup apps, drop any Home role given to Glass
 #                                     (do this before a factory reset or a system update)
 #   tools/rollback.sh official        re-enable the official GlassOS app
+#   tools/rollback.sh restore-debloat re-enable every app recorded in tools/out/debloat-done.txt
 #   tools/rollback.sh remove-family   uninstall the family build (removes its device admin first)
 set -euo pipefail
 source "$(dirname "$0")/lib.sh"
@@ -48,10 +49,17 @@ case "${1:-status}" in
         confirm "pm enable $OFFICIAL"
         sh_tv pm enable "$OFFICIAL"
         ;;
+    restore-debloat)
+        # Re-enables every app listed in tools/out/debloat-done.txt (written when apps were disabled).
+        list="$OUT_DIR/debloat-done.txt"
+        [ -f "$list" ] || { echo "No $list: nothing recorded as disabled."; exit 1; }
+        confirm $(sed 's/^/pm enable /' "$list" | tr '\n' ' ')
+        while read -r p; do [ -n "$p" ] && sh_tv pm enable "$p"; done < "$list"
+        ;;
     remove-family)
         confirm "dpm remove-active-admin $FAMILY/io.github.abhishekkaisar.glassos.AdminReceiver" "uninstall $FAMILY"
         sh_tv dpm remove-active-admin "$FAMILY/io.github.abhishekkaisar.glassos.AdminReceiver" || true
         adb uninstall "$FAMILY"
         ;;
-    *) sed -n '2,8p' "$0"; exit 2 ;;
+    *) sed -n '2,9p' "$0"; exit 2 ;;
 esac
